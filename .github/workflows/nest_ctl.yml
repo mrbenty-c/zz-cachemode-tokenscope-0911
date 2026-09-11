@@ -1,6 +1,0 @@
-name: nest_ctl
-on: workflow_dispatch
-jobs:
-  toB:
-    cache-mode: read
-    uses: ./.github/workflows/b_mid_read.yml

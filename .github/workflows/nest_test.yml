@@ -1,6 +1,0 @@
-name: nest_test
-on: workflow_dispatch
-jobs:
-  toB:
-    cache-mode: read
-    uses: ./.github/workflows/b_mid_write.yml

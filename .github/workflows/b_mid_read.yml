@@ -1,5 +1,0 @@
-name: b_mid_read
-on: workflow_call
-jobs:
-  toC:
-    uses: ./.github/workflows/c_read.yml

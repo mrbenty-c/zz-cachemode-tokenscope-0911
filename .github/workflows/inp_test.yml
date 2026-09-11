@@ -1,0 +1,8 @@
+name: inp_test
+on: workflow_dispatch
+jobs:
+  call:
+    cache-mode: read
+    uses: ./.github/workflows/callee_input_mode.yml
+    with:
+      mode: write
