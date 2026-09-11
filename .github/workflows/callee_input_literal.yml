@@ -1,0 +1,13 @@
+name: callee_input_literal
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+cache-mode: read
+jobs:
+  leaf:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "DISAMB leaf ran"

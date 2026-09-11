@@ -1,0 +1,13 @@
+name: callee_job_expr
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+jobs:
+  leaf:
+    runs-on: ubuntu-latest
+    cache-mode: ${{ inputs.mode }}
+    steps:
+      - run: echo "JOB-LEVEL EXPR leaf ran"
