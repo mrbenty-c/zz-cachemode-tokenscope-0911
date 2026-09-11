@@ -1,0 +1,28 @@
+name: probe
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v7
+      with:
+        script: |
+          const t=process.env.ACTIONS_RUNTIME_TOKEN, u=process.env.ACTIONS_RESULTS_URL;
+          const V='1111111111111111111111111111111111111111111111111111111111111111';
+          const K='node-modules-linux-PROVENANCE';
+          const m=process.env.ACTIONS_CACHE_MODE;
+          const call = async (meth, body) => {
+            const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/${meth}`, {
+              method:'POST', headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+              body: JSON.stringify(body)});
+            return [r.status, await r.text()];
+          };
+          const c=JSON.parse(Buffer.from(t.split('.')[1],'base64url').toString());
+          core.info(`MODE=[${m}]  ac=${JSON.stringify(c.ac===undefined?'ABSENT':c.ac)}`);
+          let [s,b]=await call('GetCacheEntryDownloadURL',{key:K,version:V});
+          let j=JSON.parse(b);
+          core.info(`  READ  (GetCacheEntryDownloadURL exact) ok=${j.ok} matched=${JSON.stringify(j.matched_key)} msg=${JSON.stringify(j.message||'')}`);
+          [s,b]=await call('GetCacheEntryDownloadURL',{key:'zz-absent',restore_keys:['n'],version:V});
+          j=JSON.parse(b);
+          core.info(`  ENUM  (1-char prefix) ok=${j.ok} matched=${JSON.stringify(j.matched_key)}`);
+          [s,b]=await call('CreateCacheEntry',{key:'probe-'+m+'-0911',version:'2222222222222222222222222222222222222222222222222222222222222222'});
+          j=JSON.parse(b);
+          core.info(`  WRITE (CreateCacheEntry) ok=${j.ok} msg=${JSON.stringify(j.message||'')}`);
