@@ -1,6 +1,0 @@
-name: wo_read
-on: workflow_dispatch
-jobs:
-  call:
-    cache-mode: write-only
-    uses: ./.github/workflows/callee-read.yml

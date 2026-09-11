@@ -1,0 +1,13 @@
+name: c_read
+on: workflow_call
+cache-mode: read
+jobs:
+  leaf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t=process.env.ACTIONS_RUNTIME_TOKEN;
+            const c=JSON.parse(Buffer.from(t.split('.')[1],'base64url').toString());
+            core.info(`LEAF C (declares read) depth=3 mode=[${process.env.ACTIONS_CACHE_MODE}] ac=${JSON.stringify(c.ac===undefined?'ABSENT':c.ac)}`);

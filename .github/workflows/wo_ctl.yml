@@ -1,6 +1,0 @@
-name: wo_ctl
-on: workflow_dispatch
-jobs:
-  call:
-    cache-mode: write-only
-    uses: ./.github/workflows/callee-writeonly.yml
