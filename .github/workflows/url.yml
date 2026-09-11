@@ -1,0 +1,31 @@
+name: url
+on: workflow_dispatch
+jobs:
+  permitted:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t = process.env.ACTIONS_RUNTIME_TOKEN, u = process.env.ACTIONS_RESULTS_URL;
+            const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry`, {
+              method:'POST',
+              headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+              body: JSON.stringify({key:'hc-urlshape-0911', version:'0000000000000000000000000000000000000000000000000000000000000002'})
+            });
+            core.info(`CreateCacheEntry HTTP ${r.status}`);
+            const j = await r.json();
+            core.info('RESPONSE KEYS: ' + JSON.stringify(Object.keys(j).sort()));
+            core.info('ok=' + j.ok + '  upload_url_len=' + String(j.signed_upload_url||'').length);
+            const su = j.signed_upload_url || '';
+            if (!su) { core.info('NO UPLOAD URL - nothing to analyse'); return; }
+            const p = new URL(su);
+            core.info('HOST: ' + p.host);
+            core.info('PATH SEGMENTS: ' + JSON.stringify(p.pathname.split('/').filter(Boolean).map(s=>s.length>40?`<len ${s.length}>`:s)));
+            const names = [...p.searchParams.keys()].sort();
+            core.info('QUERY PARAM NAMES (ALL, NO CAP): ' + JSON.stringify(names));
+            for (const n of names) {
+              const v = p.searchParams.get(n);
+              core.info(`  ${n} = ` + (/sig|sv$|se$|st$|sks|skoid|sktid/i.test(n) ? `<len ${v.length}>` : v.slice(0,80)));
+            }
