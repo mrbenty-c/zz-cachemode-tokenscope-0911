@@ -1,0 +1,11 @@
+name: callee_matrix_expr
+on: workflow_call
+jobs:
+  leaf:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mode: [read]
+    cache-mode: ${{ matrix.mode }}
+    steps:
+      - run: echo "MATRIX EXPR leaf ran"

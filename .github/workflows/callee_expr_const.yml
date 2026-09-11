@@ -1,0 +1,8 @@
+name: callee_expr_const
+on: workflow_call
+jobs:
+  leaf:
+    runs-on: ubuntu-latest
+    cache-mode: ${{ 'read' }}
+    steps:
+      - run: echo "CONTEXT-FREE EXPR leaf ran"
