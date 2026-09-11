@@ -1,41 +1,53 @@
 name: probe
 on: workflow_dispatch
-cache-mode: none
 jobs:
   restricted:
     runs-on: ubuntu-latest
     cache-mode: none
     steps:
-      - name: What does the runner expose
-        run: |
-          echo "ACTIONS_CACHE_MODE=[${ACTIONS_CACHE_MODE}]"
-          echo "RESULTS_URL=[${ACTIONS_RESULTS_URL}]"
-          echo "runtime_token_len=${#ACTIONS_RUNTIME_TOKEN}"
-      - name: Decode our OWN runtime token CLAIMS only (no value, no signature)
-        run: |
-          python3 - <<'PY'
-          import os,base64,json
-          t=os.environ.get('ACTIONS_RUNTIME_TOKEN','')
-          if not t: print('NO TOKEN IN THIS STEP'); raise SystemExit
-          p=t.split('.')
-          print('jwt segments:',len(p))
-          b=p[1]+'='*(-len(p[1])%4)
-          c=json.loads(base64.urlsafe_b64decode(b))
-          print('CLAIM KEYS:',sorted(c.keys()))
-          for k,v in sorted(c.items()):
-              s=str(v)
-              if k in ('scp','Scope','scope','ac','permissions','aud','iss'):
-                  print(f'  {k} = {s[:600]}')
-              else:
-                  print(f'  {k} = <len {len(s)}>')
-          PY
-      - name: SERVICE-SIDE TEST - bypass actions/cache, ask the API directly
-        run: |
-          echo "--- CreateCacheEntry with cache-mode=none in effect ---"
-          curl -sS -o /tmp/resp.json -w 'HTTP %{http_code}\n' \
-            -X POST "${ACTIONS_RESULTS_URL}twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry" \
-            -H "Authorization: Bearer ${ACTIONS_RUNTIME_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d '{"key":"hc-tokenscope-probe-0911","version":"0000000000000000000000000000000000000000000000000000000000000001"}' || true
-          echo "--- response body (first 600B) ---"; head -c 600 /tmp/resp.json; echo
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t = process.env.ACTIONS_RUNTIME_TOKEN || '';
+            const u = process.env.ACTIONS_RESULTS_URL || '';
+            const m = process.env.ACTIONS_CACHE_MODE;
+            core.info(`ARM=restricted(none)  token_len=${t.length}  results_url_set=${u.length>0}  ACTIONS_CACHE_MODE=[${m}]`);
+            if (!t || !u) { core.info('VOID: token or url absent in JS context too'); return; }
+            const c = JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
+            core.info('CLAIM KEYS: ' + JSON.stringify(Object.keys(c).sort()));
+            for (const k of Object.keys(c).sort()) {
+              const s = String(c[k]);
+              core.info(/scp|scope|ac$|aud|iss|permission/i.test(k) ? `  ${k} = ${s.slice(0,700)}` : `  ${k} = <len ${s.length}>`);
+            }
+            const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry`, {
+              method:'POST',
+              headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+              body: JSON.stringify({key:'hc-tokenscope-restricted-0911', version:'0000000000000000000000000000000000000000000000000000000000000001'})
+            });
+            core.info(`CreateCacheEntry HTTP ${r.status}`);
+            core.info('BODY: ' + (await r.text()).slice(0,500));
+  permitted:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t = process.env.ACTIONS_RUNTIME_TOKEN || '';
+            const u = process.env.ACTIONS_RESULTS_URL || '';
+            const m = process.env.ACTIONS_CACHE_MODE;
+            core.info(`ARM=permitted(write)  token_len=${t.length}  results_url_set=${u.length>0}  ACTIONS_CACHE_MODE=[${m}]`);
+            if (!t || !u) { core.info('VOID: token or url absent in JS context too'); return; }
+            const c = JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
+            core.info('CLAIM KEYS: ' + JSON.stringify(Object.keys(c).sort()));
+            for (const k of Object.keys(c).sort()) {
+              const s = String(c[k]);
+              core.info(/scp|scope|ac$|aud|iss|permission/i.test(k) ? `  ${k} = ${s.slice(0,700)}` : `  ${k} = <len ${s.length}>`);
+            }
+            const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/CreateCacheEntry`, {
+              method:'POST',
+              headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+              body: JSON.stringify({key:'hc-tokenscope-permitted-0911', version:'0000000000000000000000000000000000000000000000000000000000000001'})
+            });
+            core.info(`CreateCacheEntry HTTP ${r.status}`);
+            core.info('BODY: ' + (await r.text()).slice(0,500));
