@@ -1,0 +1,47 @@
+name: enum2
+on: workflow_dispatch
+jobs:
+  apiwriter:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const t=process.env.ACTIONS_RUNTIME_TOKEN, u=process.env.ACTIONS_RESULTS_URL;
+            const V='1111111111111111111111111111111111111111111111111111111111111111';
+            const K='node-modules-linux-PROVENANCE';
+            const NONCE='HC-PROV-0911-'+Math.random().toString(36).slice(2,10);
+            const call = async (m, body) => {
+              const r = await fetch(`${u}twirp/github.actions.results.api.v1.CacheService/${m}`, {
+                method:'POST', headers:{'Authorization':`Bearer ${t}`,'Content-Type':'application/json','Accept':'application/json'},
+                body: JSON.stringify(body)});
+              const txt = await r.text(); return [r.status, txt];
+            };
+            core.info(`NONCE=${NONCE}`);
+            let [s,b] = await call('CreateCacheEntry', {key:K, version:V});
+            core.info(`1) CreateCacheEntry HTTP ${s} ok=${JSON.parse(b).ok}`);
+            const up = JSON.parse(b).signed_upload_url;
+            if (!up) { core.info('NO UPLOAD URL: '+b.slice(0,200)); return; }
+            const body = `CACHE-CONTENT ${NONCE}\n`;
+            const pr = await fetch(up, {method:'PUT', headers:{'x-ms-blob-type':'BlockBlob','Content-Type':'application/octet-stream'}, body});
+            core.info(`2) Azure PUT HTTP ${pr.status}  bytes=${body.length}`);
+            [s,b] = await call('FinalizeCacheEntryUpload', {key:K, version:V, size_bytes:body.length});
+            core.info(`3) Finalize HTTP ${s} :: ${b.slice(0,200)}`);
+            core.info('### POSITIVE CONTROL: exact (key,version) lookup MUST succeed or every negative below is VOID ###');
+            [s,b] = await call('GetCacheEntryDownloadURL', {key:K, version:V});
+            let j=JSON.parse(b);
+            core.info(`4) exact lookup HTTP ${s} ok=${j.ok} matched_key=${JSON.stringify(j.matched_key)} url_len=${String(j.signed_download_url||'').length}`);
+            if (j.signed_download_url) {
+              const dr = await fetch(j.signed_download_url);
+              const got = await dr.text();
+              core.info(`5) CONTENT PROVENANCE: download HTTP ${dr.status} contains_nonce=${got.includes(NONCE)} body=${JSON.stringify(got.slice(0,60))}`);
+              const dp = new URL(j.signed_download_url);
+              core.info(`   download SAS sp=${dp.searchParams.get('sp')} sr=${dp.searchParams.get('sr')} sip=${dp.searchParams.get('sip')}`);
+            }
+            core.info('### ARM A RETRY: prefix enumeration, now with a proven-present entry ###');
+            for (const rk of [['zzz-absent-0911',['node-']], ['zzz-absent-0911',['n']], ['zzz-absent-0911',['qqqq-nothing-']]]) {
+              [s,b] = await call('GetCacheEntryDownloadURL', {key:rk[0], restore_keys:rk[1], version:V});
+              j=JSON.parse(b);
+              core.info(`   restore_keys=${JSON.stringify(rk[1])} -> ok=${j.ok} matched_key=${JSON.stringify(j.matched_key)}`);
+            }
