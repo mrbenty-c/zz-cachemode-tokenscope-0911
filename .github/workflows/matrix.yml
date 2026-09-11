@@ -4,16 +4,16 @@ jobs:
   m_read:
     runs-on: ubuntu-latest
     cache-mode: read
-    steps: [{uses: ./.github/actions/probe}]
+    steps: [{uses: actions/checkout@v4}, {uses: ./.github/actions/probe}]
   m_writeonly:
     runs-on: ubuntu-latest
     cache-mode: write-only
-    steps: [{uses: ./.github/actions/probe}]
+    steps: [{uses: actions/checkout@v4}, {uses: ./.github/actions/probe}]
   m_none:
     runs-on: ubuntu-latest
     cache-mode: none
-    steps: [{uses: ./.github/actions/probe}]
+    steps: [{uses: actions/checkout@v4}, {uses: ./.github/actions/probe}]
   m_write:
     runs-on: ubuntu-latest
     cache-mode: write
-    steps: [{uses: ./.github/actions/probe}]
+    steps: [{uses: actions/checkout@v4}, {uses: ./.github/actions/probe}]
